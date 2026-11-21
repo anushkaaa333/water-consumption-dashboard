@@ -2,31 +2,34 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# Page setup
 st.set_page_config(
     page_title="Water Consumption & Maintenance Dashboard",
     layout="wide",
 )
 
-# Clean professional typography and subtle header styling
 st.markdown(
     """
     <style>
         .main-title {
             font-size: 2rem;
             font-weight: 700;
-            color: #0F172A;
             margin-bottom: 0.25rem;
         }
         .subtitle {
-            font-size: 0.95rem;
-            color: #475569;
+            font-size: 0.98rem;
+            opacity: 0.85;
             margin-bottom: 1.25rem;
         }
+        div[data-testid="stMetric"] {
+            border: 1px solid rgba(128, 128, 128, 0.28);
+            border-radius: 10px;
+            padding: 12px 16px;
+            background: rgba(14, 165, 233, 0.06);
+        }
         div[data-testid="stMetricValue"] {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #0284C7;
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: #38BDF8;
         }
     </style>
     """,
@@ -63,7 +66,6 @@ def load_csv(path):
         return None
 
 
-# Load datasets
 water = load_csv("final_water_consumption.csv")
 priority = load_csv("maintenance_priority_report.csv")
 anomalies = load_csv("water_anomaly_report.csv")
@@ -104,7 +106,6 @@ water[building_col] = water[building_col].astype(str)
 if date_col:
     water[date_col] = pd.to_datetime(water[date_col], errors="coerce")
 
-# Sidebar filters
 st.sidebar.header("Filters")
 buildings = sorted(water[building_col].dropna().unique().tolist())
 selected_buildings = st.sidebar.multiselect(
@@ -113,7 +114,6 @@ selected_buildings = st.sidebar.multiselect(
 
 filtered = water[water[building_col].isin(selected_buildings)].copy()
 
-# KPI calculations
 total_consumption = filtered[consumption_col].sum()
 avg_consumption = filtered[consumption_col].mean() if not filtered.empty else 0
 
@@ -166,50 +166,66 @@ col4.metric("High Priority Buildings", f"{int(high_priority_count):,}")
 
 st.divider()
 
-# Building-wise consumption bar chart
-st.subheader("Building-wise Water Consumption")
-if not filtered.empty:
-    b_summary = (
-        filtered.groupby(building_col)[consumption_col]
-        .sum()
-        .sort_values(ascending=False)
-    )
-    st.bar_chart(b_summary, color="#0284C7")
-else:
-    st.info("No data available for the selected buildings.")
+left_col, right_col = st.columns(2)
 
-# Daily consumption trend
-if date_col:
-    st.subheader("Daily Consumption Trend")
-    daily_df = filtered.dropna(subset=[date_col]).copy()
-    if not daily_df.empty:
-        daily_df["Day"] = daily_df[date_col].dt.date
-        daily_trend = daily_df.groupby("Day")[consumption_col].sum()
-        st.line_chart(daily_trend, color="#0369A1")
+with left_col:
+    st.subheader("Building-wise Water Consumption")
+    if not filtered.empty:
+        b_summary = (
+            filtered.groupby(building_col)[consumption_col]
+            .sum()
+            .sort_values(ascending=False)
+        )
+        st.bar_chart(b_summary, color="#38BDF8")
+    else:
+        st.info("No data available for the selected buildings.")
 
-# Maintenance priority report
-st.subheader("Maintenance Priority Report")
-if priority is not None and not priority.empty:
-    st.dataframe(priority, use_container_width=True)
-else:
-    st.info("maintenance_priority_report.csv is not available or is empty.")
+with right_col:
+    if date_col:
+        st.subheader("Daily Consumption Trend")
+        daily_df = filtered.dropna(subset=[date_col]).copy()
+        if not daily_df.empty:
+            daily_df["Day"] = daily_df[date_col].dt.date
+            daily_trend = daily_df.groupby("Day")[consumption_col].sum()
+            st.line_chart(daily_trend, color="#2DD4BF")
+        else:
+            st.info("No valid date records available.")
+    else:
+        st.subheader("Consumption by Building Summary")
+        if not filtered.empty:
+            st.dataframe(
+                filtered.groupby(building_col)[consumption_col]
+                .agg(["count", "sum", "mean"])
+                .round(2),
+                use_container_width=True,
+            )
 
-# Anomaly report
-st.subheader("Anomaly Report")
-if anomalies is not None and not anomalies.empty:
-    st.dataframe(anomalies, use_container_width=True)
-elif anomaly_col:
-    anom_rows = filtered[
-        filtered[anomaly_col]
-        .astype(str)
-        .str.lower()
-        .isin(["true", "1", "yes", "anomaly", "outlier"])
-    ]
-    st.dataframe(anom_rows, use_container_width=True)
-else:
-    st.info("Anomaly report data is not available.")
+st.divider()
 
-# Download filtered data
+rep_col1, rep_col2 = st.columns(2)
+
+with rep_col1:
+    st.subheader("Maintenance Priority Report")
+    if priority is not None and not priority.empty:
+        st.dataframe(priority, use_container_width=True)
+    else:
+        st.info("maintenance_priority_report.csv is not available or is empty.")
+
+with rep_col2:
+    st.subheader("Anomaly Report")
+    if anomalies is not None and not anomalies.empty:
+        st.dataframe(anomalies, use_container_width=True)
+    elif anomaly_col:
+        anom_rows = filtered[
+            filtered[anomaly_col]
+            .astype(str)
+            .str.lower()
+            .isin(["true", "1", "yes", "anomaly", "outlier"])
+        ]
+        st.dataframe(anom_rows, use_container_width=True)
+    else:
+        st.info("Anomaly report data is not available.")
+
 st.download_button(
     label="Download Filtered Data (CSV)",
     data=filtered.to_csv(index=False).encode("utf-8"),
