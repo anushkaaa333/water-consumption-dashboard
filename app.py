@@ -38,7 +38,7 @@ st.markdown(
 
 st.markdown('<div class="main-title">Water Consumption & Maintenance Dashboard</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="subtitle">Building-wise usage overview, anomaly monitoring, and maintenance priorities</div>',
+    '<div class="subtitle">Building-wise usage overview, data validation, anomaly monitoring, and maintenance priorities</div>',
     unsafe_allow_html=True,
 )
 
@@ -99,20 +99,45 @@ if building_col is None or consumption_col is None:
     st.write("Available columns:", list(water.columns))
     st.stop()
 
-water[consumption_col] = pd.to_numeric(water[consumption_col], errors="coerce")
+raw_row_count = len(water)
+numeric_consumption = pd.to_numeric(water[consumption_col], errors="coerce")
+non_numeric_count = int(numeric_consumption.isna().sum())
+
+water = water.copy()
+water[consumption_col] = numeric_consumption
 water = water.dropna(subset=[consumption_col]).copy()
-water[building_col] = water[building_col].astype(str)
+
+negative_count = int((water[consumption_col] < 0).sum())
+valid_water = water[water[consumption_col] >= 0].copy()
+valid_water[building_col] = valid_water[building_col].astype(str)
 
 if date_col:
-    water[date_col] = pd.to_datetime(water[date_col], errors="coerce")
+    valid_water[date_col] = pd.to_datetime(valid_water[date_col], errors="coerce")
 
 st.sidebar.header("Filters")
-buildings = sorted(water[building_col].dropna().unique().tolist())
+buildings = sorted(valid_water[building_col].dropna().unique().tolist())
 selected_buildings = st.sidebar.multiselect(
     "Select Buildings", buildings, default=buildings
 )
 
-filtered = water[water[building_col].isin(selected_buildings)].copy()
+filtered = valid_water[valid_water[building_col].isin(selected_buildings)].copy()
+
+# Experiment 8: Data Validation summary
+st.subheader("Data Validation Summary")
+v_col1, v_col2, v_col3, v_col4 = st.columns(4)
+v_col1.metric("Raw Records", f"{raw_row_count:,}")
+v_col2.metric("Invalid / Missing Values", f"{non_numeric_count:,}")
+v_col3.metric("Negative Consumption Rows", f"{negative_count:,}")
+v_col4.metric("Valid Records", f"{len(valid_water):,}")
+
+if negative_count > 0 or non_numeric_count > 0:
+    st.warning(
+        f"Validation check caught {non_numeric_count} non-numeric/missing values and {negative_count} negative consumption rows. Negative rows were excluded from active analytics."
+    )
+else:
+    st.success("All consumption records passed non-negative and numeric validation checks.")
+
+st.divider()
 
 total_consumption = filtered[consumption_col].sum()
 avg_consumption = filtered[consumption_col].mean() if not filtered.empty else 0
@@ -131,7 +156,7 @@ elif anomalies is not None and not anomalies.empty:
     )
     if anom_b_col:
         anomaly_count = len(
-            anomalies[anomalies[anom_b_col].astype(str).isin(selected_buildings)]
+            anomalies[anom_b_col].astype(str).isin(selected_buildings)
         )
     else:
         anomaly_count = len(anomalies)
