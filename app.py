@@ -73,7 +73,7 @@ total_usage = filtered_df["meter_reading_liters"].sum()
 avg_usage = filtered_df["meter_reading_liters"].mean() if not filtered_df.empty else 0
 
 anom_count = len(anomalies_df[anomalies_df["building"].isin(selected_buildings)]) if not anomalies_df.empty and "building" in anomalies_df.columns else len(anomalies_df)
-high_prio = len(priority_df[(priority_df["building"].isin(selected_buildings)) & (priority_df["priority"].astype(str).str.contains("High", case=False, na=False))]) if not priority_df.empty and "building" in priority_df.columns else 0
+high_prio = len(priority_df[(priority_df["building"].isin(selected_buildings)) & (priority_df["priority"].astype(str).str.contains("High", case=False, na=False))]) if not priority_df.empty and "building" in priority_df.columns and "priority" in priority_df.columns else 0
 
 if not filtered_df.empty:
     building_totals = filtered_df.groupby("building")["meter_reading_liters"].sum().sort_values(ascending=False)
