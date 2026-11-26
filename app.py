@@ -120,7 +120,7 @@ if priority is not None and not priority.empty:
     p_b_col = find_column(priority, ["building", "building_name", "facility", "block", "site", "name"])
     p_df = priority.copy()
     if p_b_col:
-        p_df = p_df[p_b_col].astype(str).str.strip().isin(selected_buildings)]
+        p_df = p_df[p_df[p_b_col].astype(str).str.strip().isin(selected_buildings)]
     if p_col:
         high_priority_count = int(p_df[p_col].astype(str).str.lower().str.contains("high", na=False).sum())
 
