@@ -5,7 +5,6 @@ import plotly.express as px
 
 st.set_page_config(
     page_title="Water Consumption & Maintenance Dashboard",
-    page_icon="💧",
     layout="wide",
 )
 
@@ -23,7 +22,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">💧 Water Consumption & Maintenance Dashboard</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">Water Consumption & Maintenance Dashboard</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Real-time building usage analytics, automated anomaly detection, and maintenance prioritization</div>', unsafe_allow_html=True)
 
 def find_column(df, candidates):
@@ -81,14 +80,14 @@ if date_col:
     valid_water[date_col] = pd.to_datetime(valid_water[date_col], errors="coerce")
 
 # --- SIDEBAR FILTERS ---
-st.sidebar.header("🎛️ Dashboard Filters")
+st.sidebar.header("Dashboard Filters")
 buildings = sorted(valid_water[building_col].dropna().unique().tolist())
 
 select_all = st.sidebar.checkbox("Select All Buildings", value=True)
 if select_all:
-    selected_buildings = st.sidebar.multiselect("Select Buildings", buildings, default=buildings)
+    selected_buildings = st.sidebar.multiselect("Select Buildings", buildings, default=buildings, key="buildings_all")
 else:
-    selected_buildings = st.sidebar.multiselect("Select Buildings", buildings, default=buildings[:1] if buildings else [])
+    selected_buildings = st.sidebar.multiselect("Select Buildings", buildings, default=buildings[:1] if buildings else [], key="buildings_custom")
 
 filtered = valid_water[valid_water[building_col].isin(selected_buildings)].copy()
 
@@ -121,7 +120,7 @@ if priority is not None and not priority.empty:
     p_b_col = find_column(priority, ["building", "building_name", "facility", "block", "site", "name"])
     p_df = priority.copy()
     if p_b_col:
-        p_df = p_df[p_df[p_b_col].astype(str).str.strip().isin(selected_buildings)]
+        p_df = p_df[p_b_col].astype(str).str.strip().isin(selected_buildings)]
     if p_col:
         high_priority_count = int(p_df[p_col].astype(str).str.lower().str.contains("high", na=False).sum())
 
@@ -150,7 +149,7 @@ else:
     st.warning("No records match the current filter selection. Please select at least one building from the sidebar.")
 
 # --- ORGANIZED TABS ---
-tab1, tab2, tab3 = st.tabs(["📊 Visual Analytics", "🚨 Maintenance & Anomalies", "🛡️ Data Health & Export"])
+tab1, tab2, tab3 = st.tabs(["Visual Analytics", "Maintenance & Anomalies", "Data Health & Export"])
 
 with tab1:
     if not filtered.empty:
@@ -260,7 +259,7 @@ with tab3:
 
     st.divider()
     st.download_button(
-        label="⬇️ Download Filtered Dataset (CSV)",
+        label="Download Filtered Dataset (CSV)",
         data=filtered.to_csv(index=False).encode("utf-8"),
         file_name="filtered_water_consumption.csv",
         mime="text/csv",
